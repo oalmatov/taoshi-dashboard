@@ -1,7 +1,7 @@
 'use client';
 
-import { Pagination, Table, TableData } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { Pagination, Table } from "@mantine/core";
+import { JSX, useEffect, useState } from "react";
 
 interface Score {
     overall_contribution: number;
@@ -10,7 +10,8 @@ interface Score {
     value: number;
 }
 
-interface ChallengerPeriod {
+interface ChallengePeriod {
+    remaining_time_ms: number;
     start_time_ms: number;
     status: string;
 }
@@ -33,7 +34,7 @@ interface Weight {
 interface ApiData {
     hotkey: string;
     augmented_scores: AugmentedScores;
-    challenger_period: ChallengerPeriod;
+    challengeperiod: ChallengePeriod;
     weight: Weight;
 }
 
@@ -50,20 +51,10 @@ interface TableRowData {
     omega: number;
     stat_conf: number;
     rank: number;
+    challengeperiod: string;
 }
 
-interface FormattedTableRowData {
-    miner: string;
-    annual_ret: string;
-    calmar: number;
-    sharpe: number;
-    sortino: number;
-    omega: number;
-    stat_conf: number;
-    rank: number;
-}
-
-const headers = [
+const headers: string[] = [
     'Miner',
     'Annualized 90-day Return',
     'Calmar',
@@ -71,7 +62,8 @@ const headers = [
     'Sortino',
     'Omega',
     'Statistical Confidence',
-    'Miner Rank'
+    'Miner Rank',
+    'Challenge Period',
 ]
 
 function getRowData(json: ApiResponse): TableRowData[] {
@@ -86,35 +78,40 @@ function getRowData(json: ApiResponse): TableRowData[] {
             omega: data.augmented_scores.omega.value,
             stat_conf: data.augmented_scores.statistical_confidence.value,
             rank: data.weight.rank,
+            challengeperiod: data.challengeperiod.status,
         };
         rows.push(row);
     }
     return rows;
 }  
 
-function formatTableRowData(data: TableRowData[]): (string | number)[][] {
-    return data.map((row) => ([
-        row.miner,
-        `${parseFloat(row.annual_ret.toFixed(1))}%`,
-        parseFloat(row.calmar.toFixed(2)),
-        parseFloat(row.sharpe.toFixed(2)),
-        parseFloat(row.sortino.toFixed(2)),
-        parseFloat(row.omega.toFixed(2)),
-        parseFloat(row.stat_conf.toFixed(2)),
-        row.rank,
-    ]));
-} 
+function createTableRows(data: TableRowData[]): JSX.Element[] {
+    return data.map((row: TableRowData, rowIdx:number) => (
+        <Table.Tr key={rowIdx}>
+            <Table.Td>{row.miner}</Table.Td>
+            <Table.Td>{`${parseFloat(row.annual_ret.toFixed(1))}%`}</Table.Td>
+            <Table.Td>{parseFloat(row.calmar.toFixed(2))}</Table.Td>
+            <Table.Td>{parseFloat(row.sharpe.toFixed(2))}</Table.Td>
+            <Table.Td>{parseFloat(row.sortino.toFixed(2))}</Table.Td>
+            <Table.Td>{parseFloat(row.omega.toFixed(2))}</Table.Td>
+            <Table.Td>{parseFloat(row.stat_conf.toFixed(2))}</Table.Td>
+            <Table.Td>{row.rank}</Table.Td>
+            <Table.Td>{row.challengeperiod}</Table.Td>
+        </Table.Tr>
+    ))
+}
 
 export default function Home() {
     const [activePage, setActivePage] = useState<number>(1);
-    const [minerData, setMinerData] = useState<(string | number)[][]>([]);
+    const [rows, setRows] = useState<JSX.Element[]>([]);
 
     useEffect(() => {
         fetch('/data.json')
             .then(res => res.json())
             .then(data => {
+                console.log(data);
                 const apiResponse: ApiResponse = data;
-                setMinerData(formatTableRowData(getRowData(apiResponse)));
+                setRows(createTableRows(getRowData(apiResponse)));
             })
             .catch(error => console.log("Failed to fetch file:", error));
     }, []);
@@ -123,21 +120,30 @@ export default function Home() {
     const numSiblings = 1;
     const startIndex = (activePage - 1) * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
-    const currentRows = minerData.slice(startIndex, endIndex);
-
-    const tableData: TableData = {
-        head: headers,
-        body: currentRows,
-    }
+    const currentRows: JSX.Element[] = rows.slice(startIndex, endIndex);
 
     return (
         <div className="p-4">
-            <Table data={tableData} />
+            <Table>
+                <Table.Thead>
+                    <Table.Tr>
+                        {headers.map((header, headerIdx) => (
+                            <Table.Th key={headerIdx}>
+                                {header}
+                            </Table.Th>
+                        ))}
+                    </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>{currentRows}</Table.Tbody>
+            </Table>
             <Pagination 
                 page={activePage}
                 onChange={setActivePage}
-                total={Math.ceil(minerData.length / rowsPerPage)}
+                total={Math.ceil(rows.length / rowsPerPage)}
                 siblings={numSiblings}
+                color="orange"
+                radius="xs"
+                size="xs"
             />
         </div>
     );
