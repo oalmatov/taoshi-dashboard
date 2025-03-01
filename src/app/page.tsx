@@ -1,101 +1,144 @@
-import Image from "next/image";
+'use client';
+
+import { Pagination, Table, TableData } from "@mantine/core";
+import { useEffect, useState } from "react";
+
+interface Score {
+    overall_contribution: number;
+    percentile: number;
+    rank: number;
+    value: number;
+}
+
+interface ChallengerPeriod {
+    start_time_ms: number;
+    status: string;
+}
+
+interface AugmentedScores {
+    calmar: Score;
+    omega: Score;
+    return: Score;
+    sharpe: Score;
+    sortino: Score;
+    statistical_confidence: Score;
+}
+
+interface Weight {
+    percentile: number;
+    rank: number;
+    value: number;
+}
+
+interface ApiData {
+    hotkey: string;
+    augmented_scores: AugmentedScores;
+    challenger_period: ChallengerPeriod;
+    weight: Weight;
+}
+
+interface ApiResponse {
+    data: ApiData[];
+}
+
+interface TableRowData {
+    miner: string;
+    annual_ret: number;
+    calmar: number;
+    sharpe: number;
+    sortino: number;
+    omega: number;
+    stat_conf: number;
+    rank: number;
+}
+
+interface FormattedTableRowData {
+    miner: string;
+    annual_ret: string;
+    calmar: number;
+    sharpe: number;
+    sortino: number;
+    omega: number;
+    stat_conf: number;
+    rank: number;
+}
+
+const headers = [
+    'Miner',
+    'Annualized 90-day Return',
+    'Calmar',
+    'Sharpe',
+    'Sortino',
+    'Omega',
+    'Statistical Confidence',
+    'Miner Rank'
+]
+
+function getRowData(json: ApiResponse): TableRowData[] {
+    let rows: TableRowData[] = [];
+    for (const data of json.data) {
+        let row: TableRowData = {
+            miner: data.hotkey,
+            annual_ret: data.augmented_scores.return.value,
+            calmar: data.augmented_scores.calmar.value,
+            sharpe: data.augmented_scores.sharpe.value,
+            sortino: data.augmented_scores.sortino.value,
+            omega: data.augmented_scores.omega.value,
+            stat_conf: data.augmented_scores.statistical_confidence.value,
+            rank: data.weight.rank,
+        };
+        rows.push(row);
+    }
+    return rows;
+}  
+
+function formatTableRowData(data: TableRowData[]): (string | number)[][] {
+    return data.map((row) => ([
+        row.miner,
+        `${parseFloat(row.annual_ret.toFixed(1))}%`,
+        parseFloat(row.calmar.toFixed(2)),
+        parseFloat(row.sharpe.toFixed(2)),
+        parseFloat(row.sortino.toFixed(2)),
+        parseFloat(row.omega.toFixed(2)),
+        parseFloat(row.stat_conf.toFixed(2)),
+        row.rank,
+    ]));
+} 
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [activePage, setActivePage] = useState<number>(1);
+    const [minerData, setMinerData] = useState<(string | number)[][]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    useEffect(() => {
+        fetch('/data.json')
+            .then(res => res.json())
+            .then(data => {
+                const apiResponse: ApiResponse = data;
+                setMinerData(formatTableRowData(getRowData(apiResponse)));
+            })
+            .catch(error => console.log("Failed to fetch file:", error));
+    }, []);
+
+    const rowsPerPage = 20;
+    const numSiblings = 1;
+    const startIndex = (activePage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    const currentRows = minerData.slice(startIndex, endIndex);
+
+    const tableData: TableData = {
+        head: headers,
+        body: currentRows,
+    }
+
+    return (
+        <div className="p-4">
+            <Table data={tableData} />
+            <Pagination 
+                page={activePage}
+                onChange={setActivePage}
+                total={Math.ceil(minerData.length / rowsPerPage)}
+                siblings={numSiblings}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
 }
