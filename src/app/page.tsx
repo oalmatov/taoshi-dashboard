@@ -1,6 +1,8 @@
 'use client';
 
-import { Pagination, Table, ActionIcon, CopyButton, Tooltip, Title, Input, Select} from "@mantine/core";
+import React from "react";
+
+import { Pagination, Table, ActionIcon, CopyButton, Tooltip, Title, Select} from "@mantine/core";
 import { IconCopy, IconCheck, IconArrowUp, IconArrowDown } from '@tabler/icons-react';
 import { JSX, useEffect, useState } from "react";
 
@@ -80,9 +82,9 @@ const headerToKeyMap: Record<string, keyof TableRowData> = {
 };
 
 function getRowData(json: ApiResponse): TableRowData[] {
-    let rows: TableRowData[] = [];
+    const rows: TableRowData[] = [];
     for (const data of json.data) {
-        let row: TableRowData = {
+        const row: TableRowData = {
             miner: data.hotkey,
             annual_ret: data.augmented_scores.return.value,
             calmar: data.augmented_scores.calmar.value,
