@@ -6,8 +6,8 @@ import './globals.css';
 import { ColorSchemeScript, MantineProvider, createTheme, mantineHtmlProps } from '@mantine/core';
 
 export const metadata = {
-    title: 'My Mantine app',
-    description: 'I have followed setup instructions carefully',
+    title: 'Taoshi Dashboard - PLEASE HIRE ME',
+    description: 'Please',
 };
 
 const theme = createTheme({
